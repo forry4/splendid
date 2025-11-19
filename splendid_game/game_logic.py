@@ -11,7 +11,7 @@ class Game:
         self.players = ["A", "B"]
         self.current_player = "A"
 
-        # Token pool (including gold/joker tokens)
+        # Token pool (including gold tokens)
         self.tokens: Dict[Color, int] = {
             "red": 7, "green": 7, "blue": 7, "black": 7, "white": 7, "gold": 5
         }
@@ -37,7 +37,7 @@ class Game:
         # Track number of purchased cards (for tie-breaker)
         self.cards_bought = {"A": 0, "B": 0}
 
-        # Sample decks (shortened for demo; expand with full Splendor set)
+        # Sample decks (to be replaced with full decks)
         self.level1_deck = [
             {"level": 1, "color": "red",   "points": 0, "cost": {"green": 1, "blue": 1}},
             {"level": 1, "color": "green", "points": 0, "cost": {"red": 2, "black": 1}},
@@ -71,7 +71,7 @@ class Game:
             3: self.level3_deck[:4],
         }
 
-        # Nobles (example set)
+        # Nobles (to be expanded)
         self.nobles = [
             {"points": 3, "requirement": {"red": 4, "green": 4, "blue": 4}},
             {"points": 3, "requirement": {"black": 4, "white": 4, "red": 4}},
@@ -86,10 +86,6 @@ class Game:
         self.winner: Optional[str] = None
         self.end_round_triggered = False
         self.final_round_player: Optional[str] = None
-
-    # -------------------------
-    # Utility
-    # -------------------------
 
     def total_tokens(self, player_id: str) -> int:
         return sum(self.player_tokens[player_id].values())
@@ -121,10 +117,6 @@ class Game:
         if ptr < len(deck) and len(self.face_up[level]) < 4:
             self.face_up[level].append(deck[ptr])
             self.draw_ptr[level] += 1
-
-    # -------------------------
-    # Token actions
-    # -------------------------
 
     def take_tokens(self, player_id: str, colors: List[Color], discards: Optional[Dict[Color, int]] = None):
         if self.winner:
@@ -160,10 +152,6 @@ class Game:
         self._advance_turn()
         return self.to_dict()
 
-    # -------------------------
-    # Reserve
-    # -------------------------
-
     def reserve_card(self, player_id: str, level: int, index: int, discards: Optional[Dict[Color, int]] = None):
         if self.winner:
             return {"error": f"Game over. Winner: {self.winner}"}
@@ -196,10 +184,6 @@ class Game:
 
         self._advance_turn()
         return self.to_dict()
-
-    # -------------------------
-    # Buying
-    # -------------------------
 
     def can_afford(self, player_id: str, card: dict) -> bool:
         total_gold_needed = 0
@@ -291,10 +275,6 @@ class Game:
         self._advance_turn()
         return self.to_dict()
 
-    # -------------------------
-    # Nobles and endgame
-    # -------------------------
-
     def _award_nobles(self, player_id: str) -> List[dict]:
         earned: List[dict] = []
         for noble in list(self.active_nobles):
@@ -320,10 +300,6 @@ class Game:
                 self.winner = "B"
             else:
                 self.winner = "Tie"
-
-    # -------------------------
-    # Serialization
-    # -------------------------
 
     def to_dict(self):
         return {
