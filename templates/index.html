@@ -1,213 +1,39 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
   <title>Splendor Clone</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    #board { display: flex; gap: 20px; }
-    .level { border: 1px solid #ccc; padding: 10px; width: 220px; }
-    .card { border: 1px solid #666; margin: 5px 0; padding: 5px; background: #f9f9f9; }
-    #scores, #tokens, #nobles, #winner, #actions, #reserved { margin-top: 20px; padding: 10px; border: 1px solid #ccc; }
-    .noble { margin: 5px 0; padding: 5px; background: #eef; }
-    #winner { background: #ffeeba; font-size: 1.2em; font-weight: bold; display: none; }
-    button { margin-top: 5px; }
-    .token-row { margin: 5px 0; }
-  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 <h1>Splendor Clone</h1>
 
-<!-- Board -->
+<button onclick="startGame()">Start New Game</button>
+<button onclick="fetchState()">Refresh State</button>
+
 <div id="board">
-  <div class="level" id="level1">
-    <h2>Level 1</h2>
-    <div class="cards"></div>
-  </div>
-  <div class="level" id="level2">
-    <h2>Level 2</h2>
-    <div class="cards"></div>
-  </div>
-  <div class="level" id="level3">
-    <h2>Level 3</h2>
-    <div class="cards"></div>
-  </div>
+  <h2>Tokens</h2>
+  <div id="tokens" class="row"></div>
+
+  <h2>Cards</h2>
+  <div id="cards" class="row"></div>
+
+  <h2>Nobles</h2>
+  <div id="nobles" class="row"></div>
+
+  <h2>Players</h2>
+  <div id="players" class="row"></div>
 </div>
 
-<!-- Scores -->
-<section id="scores">
-  <h2>Scores</h2>
-  <div id="score-A">Player A: 0</div>
-  <div id="score-B">Player B: 0</div>
-</section>
+<div id="actions">
+  <h2>Actions</h2>
+  <label>Player ID: <input id="playerId" type="text" value="0"></label><br><br>
+  <button onclick="takeTokensUI()">Take Tokens</button>
+  <button onclick="reserveCardUI()">Reserve Card</button>
+  <button onclick="buyCardUI()">Buy Card</button>
+  <button onclick="buyReservedCardUI()">Buy Reserved Card</button>
+</div>
 
-<!-- Token Inventories -->
-<section id="tokens">
-  <h2>Tokens</h2>
-  <div id="tokens-A"></div>
-  <div id="tokens-B"></div>
-</section>
-
-<!-- Nobles -->
-<section id="nobles">
-  <h2>Nobles</h2>
-  <div id="nobles-list"></div>
-</section>
-
-<!-- Reserved -->
-<section id="reserved">
-  <h2>Reserved Cards</h2>
-  <div id="reserved-list"></div>
-</section>
-
-<!-- Winner -->
-<section id="winner">
-  <h2>Winner</h2>
-  <div id="winner-name"></div>
-</section>
-
-<!-- Actions -->
-<section id="actions">
-  <h2>Token Actions</h2>
-  <button onclick="takeTokens(['red','green','blue'])">Take RGB</button>
-  <button onclick="takeTokens(['red','red'])">Take 2 Red</button>
-</section>
-
-<script>
-  let currentPlayer = "A"; // updated dynamically
-
-  async function refreshGame() {
-    const res = await fetch("/game/state");
-    const state = await res.json();
-    renderGame(state);
-  }
-
-  function renderGame(state) {
-    // Current player
-    currentPlayer = state.current_player;
-
-    // Scores
-    document.getElementById("score-A").textContent = `Player A: ${state.scores.A}`;
-    document.getElementById("score-B").textContent = `Player B: ${state.scores.B}`;
-
-    // Token inventories
-    renderTokens("A", state.player_tokens.A);
-    renderTokens("B", state.player_tokens.B);
-
-    // Face-up cards
-    [1,2,3].forEach(level => {
-      const container = document.querySelector(`#level${level} .cards`);
-      container.innerHTML = "";
-      state.face_up[level].forEach((card, idx) => {
-        const el = document.createElement("div");
-        el.className = "card";
-        el.innerHTML = `
-          <strong>${card.color}</strong> (Lvl ${card.level})<br>
-          Points: ${card.points}<br>
-          Cost: ${Object.entries(card.cost).map(([c,v]) => `${c}:${v}`).join(", ")}<br>
-        `;
-        const buyBtn = document.createElement("button");
-        buyBtn.textContent = `Buy (P${currentPlayer})`;
-        buyBtn.onclick = () => buyCard(level, idx);
-        el.appendChild(buyBtn);
-
-        const reserveBtn = document.createElement("button");
-        reserveBtn.textContent = `Reserve (P${currentPlayer})`;
-        reserveBtn.onclick = () => reserveCard(level, idx);
-        el.appendChild(reserveBtn);
-
-        container.appendChild(el);
-      });
-    });
-
-    // Nobles
-    const noblesDiv = document.getElementById("nobles-list");
-    noblesDiv.innerHTML = "";
-    state.active_nobles.forEach((noble, idx) => {
-      const nobleEl = document.createElement("div");
-      nobleEl.className = "noble";
-      nobleEl.innerHTML = `
-        <strong>Noble ${idx+1}</strong> - ${noble.points} points<br>
-        Requirement: ${Object.entries(noble.requirement)
-          .map(([color, count]) => `${color}: ${count}`)
-          .join(", ")}
-      `;
-      noblesDiv.appendChild(nobleEl);
-    });
-
-    // Reserved cards for current player
-    const reservedDiv = document.getElementById("reserved-list");
-    reservedDiv.innerHTML = "";
-    state.reserved[currentPlayer].forEach((card, idx) => {
-      const el = document.createElement("div");
-      el.className = "card";
-      el.innerHTML = `
-        <strong>${card.color}</strong> (Lvl ${card.level})<br>
-        Points: ${card.points}<br>
-        Cost: ${Object.entries(card.cost).map(([c,v]) => `${c}:${v}`).join(", ")}<br>
-      `;
-      const buyBtn = document.createElement("button");
-      buyBtn.textContent = `Buy Reserved (P${currentPlayer})`;
-      buyBtn.onclick = () => buyReserved(idx);
-      el.appendChild(buyBtn);
-      reservedDiv.appendChild(el);
-    });
-
-    // Winner
-    if (state.winner) {
-      document.getElementById("winner").style.display = "block";
-      document.getElementById("winner-name").textContent =
-        state.winner === "Tie" ? "It's a tie!" : `Winner: Player ${state.winner}`;
-    } else {
-      document.getElementById("winner").style.display = "none";
-    }
-  }
-
-  function renderTokens(player, tokens) {
-    const div = document.getElementById(`tokens-${player}`);
-    div.innerHTML = `<strong>Player ${player} Tokens:</strong><br>` +
-      Object.entries(tokens).map(([color, count]) => `${color}: ${count}`).join(" | ");
-  }
-
-  // Action handlers
-  async function takeTokens(colors) {
-    await fetch("/game/take_tokens", {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({player_id: currentPlayer, colors})
-    });
-    refreshGame();
-  }
-
-  async function reserveCard(level, index) {
-    await fetch("/game/reserve", {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({player_id: currentPlayer, level, index})
-    });
-    refreshGame();
-  }
-
-  async function buyCard(level, index) {
-    await fetch("/game/buy", {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({player_id: currentPlayer, level, index})
-    });
-    refreshGame();
-  }
-
-  async function buyReserved(index) {
-    await fetch("/game/buy_reserved", {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({player_id: currentPlayer, index})
-    });
-    refreshGame();
-  }
-
-  // Initial load
-  refreshGame();
-</script>
+<script src="{{ url_for('static', filename='game.js') }}"></script>
 </body>
 </html>
