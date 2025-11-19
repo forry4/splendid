@@ -1,33 +1,133 @@
-body { font-family: Arial, sans-serif; background: #eee; }
-#board { display: flex; flex-direction: column; gap: 20px; }
-.row { display: flex; gap: 10px; flex-wrap: wrap; }
-
-.token {
-  width: 60px; height: 60px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: bold; color: white;
+/* General layout */
+body {
+  background: #f0f0f0;
+  font-family: Arial, sans-serif;
+  margin: 20px;
 }
-.token.red { background: crimson; }
-.token.blue { background: royalblue; }
-.token.green { background: seagreen; }
-.token.white { background: silver; color: black; }
-.token.black { background: black; }
-.token.gold { background: goldenrod; }
 
+h1, h2 {
+  color: #333;
+}
+
+#board {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Tokens */
+.token {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: white;
+  border: 2px solid #222;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  background-size: cover;
+  background-position: center;
+}
+
+.token.red    { background-image: url("gems/ruby.png"); }
+.token.blue   { background-image: url("gems/sapphire.png"); }
+.token.green  { background-image: url("gems/emerald.png"); }
+.token.white  { background-image: url("gems/diamond.png"); color: black; }
+.token.black  { background-image: url("gems/onyx.png"); }
+.token.gold   { background-image: url("gems/gold.png"); }
+
+/* Cards */
 .card {
-  width: 120px; height: 160px;
+  width: 120px;
+  height: 160px;
   border: 2px solid #333;
   background: white;
   padding: 5px;
-  display: flex; flex-direction: column; justify-content: space-between;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
-.card .points { font-size: 20px; font-weight: bold; }
-.card .cost { font-size: 12px; }
 
+.card .points {
+  font-size: 20px;
+  font-weight: bold;
+  color: darkred;
+}
+
+.card .color {
+  font-size: 14px;
+  font-weight: bold;
+  text-transform: capitalize;
+}
+
+.card .cost {
+  font-size: 12px;
+  color: #555;
+}
+
+/* Nobles */
 .noble {
-  width: 100px; height: 100px;
+  width: 100px;
+  height: 100px;
   border: 2px solid #333;
   background: #ddd;
-  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+/* Players */
+.player {
+  width: 220px;
+  border: 2px solid #333;
+  background: #fafafa;
+  padding: 10px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+.player strong {
+  font-size: 16px;
+}
+
+/* Gem icons for costs/requirements */
+.gem-icon {
+  width: 20px;
+  height: 20px;
+  display: inline-block;
+  background-size: cover;
+  background-position: center;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.gem-red    { background-image: url("gems/red.png"); }
+.gem-blue   { background-image: url("gems/blue.png"); }
+.gem-green  { background-image: url("gems/green.png"); }
+.gem-white  { background-image: url("gems/white.png"); }
+.gem-black  { background-image: url("gems/black.png"); }
+.gem-gold   { background-image: url("gems/gold.png"); }
+
+.player-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.player-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 5px;
 }
