@@ -1,1 +1,1 @@
-web: gunicorn splendid_game.app:app
+web: gunicorn splendor_game.app:app
