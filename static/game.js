@@ -1,44 +1,41 @@
-/* ===== Splendor Frontend =====
-   - Assumes Flask endpoints:
+/* ===== Splendor Frontend (full game.js) =====
+   Backend endpoints expected:
      POST /game/new
      GET  /game/state/<gameId>
      POST /game/take_tokens/<gameId>       { player_id, colors:[], discards?:{} }
      POST /game/reserve/<gameId>           { player_id, level, index, discards?:{} }
      POST /game/buy/<gameId>               { player_id, level, index }
      POST /game/buy_reserved/<gameId>      { player_id, index }
-   - Supports backend state either:
+
+   Backend state shape expected from Game.to_dict():
      {
-       tokens:{...},
-       cards:[...],            // flat array of visible market cards
-       nobles:[...],
-       players:[...]
-     }
-     OR per-level market:
-     {
-       tokens:{...},
-       market:{ 1:[...], 2:[...], 3:[...] },
-       nobles:[...],
-       players:[...]
+       tokens: { white, blue, green, red, black, gold },
+       cards: [ { color, points, cost:{...}, level? }, ... ],     // visible market cards
+       nobles: [ { points, requirements:{...} }, ... ],
+       players: [
+         { points, tokens:{...}, cards:[...], reserved:[...]? },
+         ...
+       ]
      }
 */
 
 let gameId = null;
 
-// Order used for consistent token display
+// Consistent ordering for token display
 const GEM_ORDER = ["white", "blue", "green", "red", "black", "gold"];
 
 /* ---------- Core ---------- */
 
 async function startGame() {
   try {
-    const response = await fetch("/game/new", { method: "POST" });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Failed to start game");
+    const res = await fetch("/game/new", { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to start game");
     gameId = data.game_id;
     localStorage.setItem("gameId", gameId);
     renderGameState(data.state);
   } catch (err) {
-    console.error("startGame error:", err);
+    console.error("startGame:", err);
     alert("Could not start a new game.");
   }
 }
@@ -52,12 +49,12 @@ async function fetchState() {
         return;
       }
     }
-    const response = await fetch(`/game/state/${gameId}`);
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Failed to fetch state");
+    const res = await fetch(`/game/state/${gameId}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to fetch state");
     renderGameState(data);
   } catch (err) {
-    console.error("fetchState error:", err);
+    console.error("fetchState:", err);
     alert("Could not fetch game state.");
   }
 }
@@ -66,73 +63,72 @@ async function fetchState() {
 
 async function takeTokens(playerId, colors, discards) {
   try {
-    const response = await fetch(`/game/take_tokens/${gameId}`, {
+    const res = await fetch(`/game/take_tokens/${gameId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ player_id: playerId, colors, discards })
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Failed to take tokens");
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to take tokens");
     renderGameState(data);
   } catch (err) {
-    console.error("takeTokens error:", err);
+    console.error("takeTokens:", err);
     alert(err.message);
   }
 }
 
 async function reserveCard(playerId, level, index, discards) {
   try {
-    const response = await fetch(`/game/reserve/${gameId}`, {
+    const res = await fetch(`/game/reserve/${gameId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ player_id: playerId, level, index, discards })
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Failed to reserve card");
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to reserve card");
     renderGameState(data);
   } catch (err) {
-    console.error("reserveCard error:", err);
+    console.error("reserveCard:", err);
     alert(err.message);
   }
 }
 
 async function buyCard(playerId, level, index) {
   try {
-    const response = await fetch(`/game/buy/${gameId}`, {
+    const res = await fetch(`/game/buy/${gameId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ player_id: playerId, level, index })
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Failed to buy card");
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to buy card");
     renderGameState(data);
   } catch (err) {
-    console.error("buyCard error:", err);
+    console.error("buyCard:", err);
     alert(err.message);
   }
 }
 
 async function buyReservedCard(playerId, index) {
   try {
-    const response = await fetch(`/game/buy_reserved/${gameId}`, {
+    const res = await fetch(`/game/buy_reserved/${gameId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ player_id: playerId, index })
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Failed to buy reserved card");
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to buy reserved card");
     renderGameState(data);
   } catch (err) {
-    console.error("buyReservedCard error:", err);
+    console.error("buyReservedCard:", err);
     alert(err.message);
   }
 }
 
-/* ---------- UI Helpers (wired to your buttons) ---------- */
+/* ---------- UI Helpers (bind these to your buttons) ---------- */
 
 function takeTokensUI() {
   const playerId = parseInt(document.getElementById("playerId")?.value ?? "0", 10);
-  // Simple prompt-based selection for now (pick 3 different or 2 of same).
   const input = prompt("Enter colors to take (comma-separated). Example: red,blue,green or blue,blue");
   if (!input) return;
   const colors = input.split(",").map(s => s.trim()).filter(Boolean);
@@ -165,11 +161,11 @@ function renderGameState(state) {
   try {
     console.log("Rendering state:", state);
 
-    // Tokens (bank)
+    // Bank tokens
     renderTokens(state.tokens);
 
-    // Cards: supports both flat array (state.cards) and per-level market (state.market[level])
-    renderMarket(state);
+    // Market cards (flat array from backend)
+    renderMarket(state.cards);
 
     // Nobles
     renderNobles(state.nobles);
@@ -177,7 +173,6 @@ function renderGameState(state) {
     // Players
     renderPlayers(state.players);
 
-    // Store last state for debugging
     window.__lastState = state;
   } catch (err) {
     console.error("Render error:", err);
@@ -185,71 +180,47 @@ function renderGameState(state) {
   }
 }
 
-/* ----- Render sub-sections ----- */
+/* ----- Render helpers ----- */
 
 function renderTokens(tokens) {
   const tokensDiv = document.getElementById("tokens");
   tokensDiv.innerHTML = "";
-  // Use GEM_ORDER for consistent ordering; fall back to object order if some missing
-  const colors = GEM_ORDER.filter(c => tokens && tokens.hasOwnProperty(c));
-  colors.forEach(color => {
-    const count = tokens[color];
-    const token = document.createElement("div");
-    token.className = `token ${color}`;
-    token.innerHTML = `<span style="background: rgba(0,0,0,0.65);
+  GEM_ORDER.forEach(color => {
+    if (tokens && tokens[color] !== undefined) {
+      const count = tokens[color];
+      const token = document.createElement("div");
+      token.className = `token ${color}`;
+      token.innerHTML = `<span style="background: rgba(0,0,0,0.65);
                                    color: white;
                                    padding: 2px 6px;
                                    border-radius: 6px;">${count}</span>`;
-    tokensDiv.appendChild(token);
+      tokensDiv.appendChild(token);
+    }
   });
 }
 
-function renderMarket(state) {
+function renderMarket(cards) {
   const cardsDiv = document.getElementById("cards");
   cardsDiv.innerHTML = "";
 
-  const market = state.market || null;
-  const flat = state.cards || null;
-
-  if (market && (market[1] || market[2] || market[3])) {
-    // Render per-level rows
-    [1, 2, 3].forEach(level => {
-      const row = document.createElement("div");
-      row.className = "row";
-      row.dataset.level = String(level);
-
-      const header = document.createElement("h3");
-      header.textContent = `Level ${level}`;
-      cardsDiv.appendChild(header);
-
-      (market[level] || []).forEach((card, idx) => {
-        const cardEl = buildCardEl(card);
-        cardEl.dataset.level = String(level);
-        cardEl.dataset.index = String(idx);
-        // Click to buy/reserve
-        cardEl.addEventListener("click", () => cardClick(level, idx, card));
-        row.appendChild(cardEl);
-      });
-
-      cardsDiv.appendChild(row);
-    });
-  } else if (Array.isArray(flat)) {
-    // Render a single row for the flat visible market
-    const row = document.createElement("div");
-    row.className = "row";
-    flat.forEach((card, idx) => {
-      const cardEl = buildCardEl(card);
-      // Assume level is present in card or default to 1
-      const level = card.level ?? 1;
-      cardEl.dataset.level = String(level);
-      cardEl.dataset.index = String(idx);
-      cardEl.addEventListener("click", () => cardClick(level, idx, card));
-      row.appendChild(cardEl);
-    });
-    cardsDiv.appendChild(row);
-  } else {
-    cardsDiv.textContent = "No market data.";
+  if (!Array.isArray(cards) || cards.length === 0) {
+    cardsDiv.textContent = "No market cards.";
+    return;
   }
+
+  const row = document.createElement("div");
+  row.className = "row";
+
+  cards.forEach((card, idx) => {
+    const el = buildCardEl(card);
+    const level = card.level ?? 1;
+    el.dataset.level = String(level);
+    el.dataset.index = String(idx);
+    el.addEventListener("click", () => cardClick(level, idx, card));
+    row.appendChild(el);
+  });
+
+  cardsDiv.appendChild(row);
 }
 
 function renderNobles(nobles) {
@@ -259,8 +230,8 @@ function renderNobles(nobles) {
     const div = document.createElement("div");
     div.className = "noble";
     div.innerHTML = `
-      <div>Points: ${noble.points}</div>
-      <div>${buildCostHTML(noble.requirements)}</div>
+      <div>Points: ${noble.points ?? 0}</div>
+      <div>${buildCostHTML(noble.requirements || {})}</div>
     `;
     noblesDiv.appendChild(div);
   });
@@ -276,7 +247,6 @@ function renderPlayers(players) {
     const tokensHTML = buildCostHTML(player.tokens || {});
     const reservedHTML = buildReservedListHTML(player.reserved || []);
 
-    // Small owned cards strip (optional)
     const ownedStrip = document.createElement("div");
     ownedStrip.className = "player-cards";
     (player.cards || []).forEach(card => {
@@ -309,7 +279,6 @@ function renderPlayers(players) {
 function buildCardEl(card) {
   const div = document.createElement("div");
   div.className = "card";
-
   const costHTML = buildCostHTML(card.cost || {});
   div.innerHTML = `
     <div class="points">${card.points ?? 0}</div>
@@ -320,15 +289,12 @@ function buildCardEl(card) {
 }
 
 function buildCostHTML(costObj) {
-  // Show icons in GEM_ORDER, then any extras found
-  const ordered = GEM_ORDER.filter(c => costObj && costObj[c] > 0);
+  const ordered = GEM_ORDER.filter(c => costObj && Number(costObj[c]) > 0);
   const extras = Object.keys(costObj || {}).filter(
-    c => !ordered.includes(c) && costObj[c] > 0
+    c => !ordered.includes(c) && Number(costObj[c]) > 0
   );
   const all = [...ordered, ...extras];
-  return all
-    .map(c => `<span class="gem-icon gem-${c}"></span>${costObj[c]}`)
-    .join(" ");
+  return all.map(c => `<span class="gem-icon gem-${c}"></span>${costObj[c]}`).join(" ");
 }
 
 function buildReservedListHTML(reservedArr) {
@@ -338,7 +304,7 @@ function buildReservedListHTML(reservedArr) {
     .join(" | ");
 }
 
-/* ----- Card click handlers ----- */
+/* ----- Card click handler ----- */
 
 function cardClick(level, index, card) {
   const playerId = parseInt(document.getElementById("playerId")?.value ?? "0", 10);
@@ -364,7 +330,7 @@ window.addEventListener("load", () => {
     gameId = savedId;
     fetchState();
   }
-  // Expose for quick debugging in console
+  // Expose for quick debugging
   window._splendor = {
     startGame,
     fetchState,
